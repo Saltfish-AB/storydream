@@ -1,0 +1,26 @@
+version: '3.8'
+
+# Development compose - runs frontend and backend in dev mode
+# Project containers are created dynamically by the backend
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/src:/app/src
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    command: ["npm", "run", "dev"]
+
+  # Build the project container image
+  project-image:
+    build:
+      context: ./project-container
+      dockerfile: Dockerfile
+    image: storydream-project
+    command: ["echo", "Image built"]

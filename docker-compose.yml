@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_BACKEND_URL=ws://localhost:8080
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      - project-image
+
+  # This service just builds the project container image
+  # It doesn't run - it's used as a dependency to ensure the image exists
+  project-image:
+    build:
+      context: ./project-container
+      dockerfile: Dockerfile
+    image: storydream-project
+    command: ["echo", "Image built"]
