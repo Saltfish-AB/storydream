@@ -72,14 +72,8 @@ export function useWebSocket(): UseWebSocketReturn {
         break;
 
       case 'agent:complete':
-        // Finalize the assistant message
-        if (currentAssistantMessage.current) {
-          setMessages(prev => [
-            ...prev.slice(0, -1),
-            { role: 'assistant', content: currentAssistantMessage.current }
-          ]);
-          currentAssistantMessage.current = '';
-        }
+        // Agent finished responding
+        currentAssistantMessage.current = '';
         setIsLoading(false);
         break;
 
@@ -103,26 +97,22 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Extract text content from assistant messages
     if (sdkMessage.type === 'assistant' && sdkMessage.message?.content) {
+      // Each assistant SDK message is a new bubble - reset accumulated content
+      currentAssistantMessage.current = '';
+
+      // Collect all text from this assistant message
       for (const block of sdkMessage.message.content) {
         if (block.type === 'text') {
           currentAssistantMessage.current += block.text;
-
-          // Update the message in state for streaming effect
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage?.role === 'assistant') {
-              return [
-                ...prev.slice(0, -1),
-                { role: 'assistant', content: currentAssistantMessage.current }
-              ];
-            } else {
-              return [
-                ...prev,
-                { role: 'assistant', content: currentAssistantMessage.current }
-              ];
-            }
-          });
         }
+      }
+
+      // Only add if there's actual text content
+      if (currentAssistantMessage.current) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: currentAssistantMessage.current }
+        ]);
       }
     }
   }, []);
@@ -131,6 +121,7 @@ export function useWebSocket(): UseWebSocketReturn {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       setIsLoading(true);
       setMessages([]);
+      currentAssistantMessage.current = '';
       wsRef.current.send(JSON.stringify({ type: 'session:start' }));
     }
   }, []);
