@@ -31,6 +31,12 @@ COPY remotion-app/ ./remotion-app/
 COPY start.sh ./
 RUN chmod +x start.sh
 
+# Give node user ownership of /app (required for bypassPermissions mode)
+RUN chown -R node:node /app
+
+# Switch to non-root user
+USER node
+
 # Expose ports
 # 3000 - Vite dev server (Remotion preview)
 # 3001 - Agent WebSocket server
