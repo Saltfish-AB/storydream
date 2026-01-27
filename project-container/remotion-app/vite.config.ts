@@ -4,6 +4,8 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  // Use relative paths so preview works behind ingress path routing
+  base: './',
   resolve: {
     alias: [
       // Alias for the wrapper to access the real remotion package (must come first)

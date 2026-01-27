@@ -1,0 +1,64 @@
+# This is a TEMPLATE showing the pod structure that the backend will create dynamically.
+# Do NOT apply this directly - it's used as reference for the backend's Kubernetes client.
+#
+# The backend will substitute:
+#   - ${SESSION_ID} - unique session identifier
+#   - ${PROJECT_ID} - the project being edited
+#   - ${AGENT_SESSION_ID} - Claude agent session for resumption
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: session-${SESSION_ID}
+  namespace: storydream
+  labels:
+    app: session
+    session-id: "${SESSION_ID}"
+    project-id: "${PROJECT_ID}"
+spec:
+  restartPolicy: Never
+  # Use Workload Identity for GCS/Firestore access
+  serviceAccountName: session-sa
+  containers:
+    - name: project-container
+      image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v1
+      ports:
+        - containerPort: 3000
+          name: preview
+        - containerPort: 3001
+          name: agent-ws
+      env:
+        - name: PROJECT_ID
+          value: "${PROJECT_ID}"
+        - name: AGENT_SESSION_ID
+          value: "${AGENT_SESSION_ID}"
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: storydream-secrets
+              key: anthropic-api-key
+        - name: GCP_PROJECT_ID
+          value: "saltfish-434012"
+        - name: STORAGE_BUCKET
+          value: "storydream-data"
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "500m"
+        limits:
+          memory: "4Gi"
+          cpu: "2000m"
+      # Volume mounts for project source code
+      volumeMounts:
+        - name: project-src
+          mountPath: /app/remotion-app/src
+        - name: claude-session
+          mountPath: /home/node/.claude
+  volumes:
+    # EmptyDir volumes - data synced from/to GCS by the container
+    - name: project-src
+      emptyDir: {}
+    - name: claude-session
+      emptyDir: {}
+  # Auto-delete pod after 1 hour of completion
+  activeDeadlineSeconds: 3600

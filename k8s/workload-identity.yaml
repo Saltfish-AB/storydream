@@ -1,0 +1,9 @@
+# Service account for session pods to access GCS/Firestore
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: session-sa
+  namespace: storydream
+  annotations:
+    # Links to GCP service account for Workload Identity
+    iam.gke.io/gcp-service-account: storydream-session@saltfish-434012.iam.gserviceaccount.com

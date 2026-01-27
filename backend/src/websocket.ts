@@ -1,5 +1,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { createSession, destroySession, getSession, syncSession, updateSessionAgentId } from './container.js';
+// Use Kubernetes when running in K8s, Docker when running locally
+const useKubernetes = process.env.RUNNING_IN_KUBERNETES === 'true';
+const containerModule = useKubernetes
+  ? await import('./kubernetes.js')
+  : await import('./container.js');
+const { createSession, destroySession, getSession, syncSession, updateSessionAgentId } = containerModule;
 import { saveMessage, getRecentMessages } from './firestore.js';
 import { getProject, updateProject } from './projects.js';
 import type { AgentAction } from './types.js';
@@ -126,13 +131,19 @@ async function handleSessionStart(client: ClientConnection, projectId?: string):
   const session = await createSession(projectId);
   client.sessionId = session.id;
 
-  // Wait for container to be ready
-  // Use localhost with mapped port when running locally, container name when in Docker
-  const isRunningInDocker = process.env.RUNNING_IN_DOCKER === 'true';
-  const agentUrl = isRunningInDocker
-    ? `ws://${session.containerName}:3001`
-    : `ws://localhost:${session.agentPort}`;
-  await waitForPort(agentUrl, 30000);
+  // Wait for container/pod to be ready and get agent WebSocket URL
+  let agentUrl: string;
+  if (useKubernetes) {
+    // In Kubernetes, use pod IP directly
+    agentUrl = `ws://${(session as any).podIp}:${session.agentPort}`;
+  } else {
+    // Docker mode: use container name in Docker network, localhost otherwise
+    const isRunningInDocker = process.env.RUNNING_IN_DOCKER === 'true';
+    agentUrl = isRunningInDocker
+      ? `ws://${(session as any).containerName}:3001`
+      : `ws://localhost:${session.agentPort}`;
+  }
+  await waitForPort(agentUrl, 300000); // 5 min timeout for K8s pod startup (includes image pulls)
 
   // Connect to agent WebSocket
   client.agentWs = new WebSocket(agentUrl);
@@ -230,11 +241,22 @@ async function handleSessionStart(client: ClientConnection, projectId?: string):
   });
 
   // Send session ready to frontend
+  // Preview URL depends on environment
+  let previewUrl: string;
+  if (useKubernetes) {
+    // In K8s, preview is accessed via NodePort on node's external IP
+    const NODE_EXTERNAL_IP = process.env.NODE_EXTERNAL_IP || '34.88.112.102';
+    previewUrl = `http://${NODE_EXTERNAL_IP}:${session.previewPort}`;
+  } else {
+    previewUrl = `http://localhost:${session.previewPort}`;
+  }
+
+  console.log(`Sending session:ready to frontend - sessionId: ${session.id}, previewUrl: ${previewUrl}`);
   sendToClient(client.ws, {
     type: 'session:ready',
     sessionId: session.id,
     projectId: client.projectId,
-    previewUrl: `http://localhost:${session.previewPort}`,
+    previewUrl,
   });
 }
 

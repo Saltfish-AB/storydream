@@ -24,6 +24,7 @@ export function VideoPreview({ previewUrl, isLoading }: VideoPreviewProps) {
   return (
     <div className="w-full h-full" style={{ background: 'var(--bg-primary)' }}>
       <iframe
+        key={previewUrl}
         src={previewUrl}
         className="w-full h-full border-0"
         title="Video Preview"

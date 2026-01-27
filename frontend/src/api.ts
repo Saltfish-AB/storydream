@@ -2,7 +2,10 @@
 
 import type { Project, ChatMessage, CreateProjectRequest } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+// Use relative URL in production (nginx proxies /api to backend)
+// Use localhost for local development
+const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const API_BASE = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:8081/api' : '/api');
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {

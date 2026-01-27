@@ -1,7 +1,13 @@
 import 'dotenv/config';
 import { createWebSocketServer } from './websocket.js';
 import { startApiServer } from './api.js';
-import { cleanupAllSessions } from './container.js';
+
+// Use Kubernetes when running in K8s, Docker when running locally
+const useKubernetes = process.env.RUNNING_IN_KUBERNETES === 'true';
+const containerModule = useKubernetes
+  ? await import('./kubernetes.js')
+  : await import('./container.js');
+const { cleanupAllSessions } = containerModule;
 
 // Load .env from parent directory
 import { config } from 'dotenv';

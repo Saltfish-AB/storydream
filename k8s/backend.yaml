@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: storydream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      serviceAccountName: backend-sa
+      containers:
+        - name: backend
+          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v3
+          ports:
+            - containerPort: 8080
+              name: websocket
+            - containerPort: 8081
+              name: rest-api
+          env:
+            - name: GCP_PROJECT_ID
+              value: "saltfish-434012"
+            - name: STORAGE_BUCKET
+              value: "storydream-data"
+            - name: RUNNING_IN_KUBERNETES
+              value: "true"
+            - name: K8S_NAMESPACE
+              value: "storydream"
+            - name: PROJECT_CONTAINER_IMAGE
+              value: "europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v2"
+            - name: NODE_EXTERNAL_IP
+              value: "34.88.112.102"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: storydream-secrets
+                  key: anthropic-api-key
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: storydream
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: websocket
+      port: 8080
+      targetPort: 8080
+    - name: rest-api
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP

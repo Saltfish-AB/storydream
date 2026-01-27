@@ -1,0 +1,50 @@
+# Service account for the backend to create/manage session pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backend-sa
+  namespace: storydream
+  annotations:
+    # Links to GCP service account for Workload Identity (GCS/Firestore access)
+    iam.gke.io/gcp-service-account: storydream-backend@saltfish-434012.iam.gserviceaccount.com
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-manager
+  namespace: storydream
+rules:
+  # Allow creating and managing session pods
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+  # Allow reading pod logs (useful for debugging)
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  # Allow exec into pods (if needed for debugging)
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  # Allow creating and managing session services
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["create", "delete", "get", "list"]
+  # Allow creating and managing session ingresses
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["create", "delete", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-pod-manager
+  namespace: storydream
+subjects:
+  - kind: ServiceAccount
+    name: backend-sa
+    namespace: storydream
+roleRef:
+  kind: Role
+  name: pod-manager
+  apiGroup: rbac.authorization.k8s.io
