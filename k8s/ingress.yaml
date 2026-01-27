@@ -4,6 +4,8 @@ metadata:
   name: storydream-ingress
   namespace: storydream
   annotations:
+    # TLS certificate management
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
     # WebSocket support
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
@@ -12,8 +14,13 @@ metadata:
     nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - storydream.saltfish.ai
+      secretName: storydream-tls
   rules:
-    - http:
+    - host: storydream.saltfish.ai
+      http:
         paths:
           # WebSocket endpoint - must come before catch-all
           - path: /ws
