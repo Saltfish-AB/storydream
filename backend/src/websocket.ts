@@ -244,10 +244,10 @@ async function handleSessionStart(client: ClientConnection, projectId?: string):
   // Preview URL depends on environment
   let previewUrl: string;
   if (useKubernetes) {
-    // In K8s, preview is accessed via NodePort on node's external IP
-    const NODE_EXTERNAL_IP = process.env.NODE_EXTERNAL_IP || '34.88.112.102';
-    previewUrl = `http://${NODE_EXTERNAL_IP}:${session.previewPort}`;
+    // Use path-based URL - backend proxies /preview/{sessionId} to pod
+    previewUrl = `https://${session.shortId}.saltfish.ai/`;
   } else {
+    // Local dev: direct access still works
     previewUrl = `http://localhost:${session.previewPort}`;
   }
 

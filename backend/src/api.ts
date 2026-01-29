@@ -1,5 +1,6 @@
 import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import {
   createProject,
   getProject,
@@ -10,11 +11,165 @@ import {
 } from './projects.js';
 import { getMessages } from './firestore.js';
 
+// Use Kubernetes when running in K8s, Docker when running locally
+const useKubernetes = process.env.RUNNING_IN_KUBERNETES === 'true';
+
+// Dynamic import to load the correct container module
+const containerModule = useKubernetes
+  ? await import('./kubernetes.js')
+  : await import('./container.js');
+const { getSession } = containerModule;
+
+// Get getSessionByShortId only in Kubernetes mode
+const getSessionByShortId = useKubernetes
+  ? (await import('./kubernetes.js')).getSessionByShortId
+  : null;
+
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Subdomain routing middleware - routes {shortId}.storydream.saltfish.ai to pod IPs
+// This handles requests coming through the wildcard ingress
+if (useKubernetes && getSessionByShortId) {
+  const subdomainProxy = createProxyMiddleware({
+    changeOrigin: true,
+    ws: true,
+    router: (req) => {
+      const host = req.headers.host || '';
+      const match = host.match(/^([a-f0-9]{8})\.saltfish\.ai/);
+      const shortId = match?.[1];
+
+      if (!shortId || !getSessionByShortId) {
+        return 'http://localhost:3000'; // fallback
+      }
+
+      const session = getSessionByShortId(shortId);
+      if (!session?.podIp) {
+        console.log(`[Subdomain Router] Session not found for shortId: ${shortId}`);
+        return 'http://localhost:3000';
+      }
+
+      const target = `http://${session.podIp}:3000`;
+      console.log(`[Subdomain Router] ${host} -> ${target}`);
+      return target;
+    },
+    on: {
+      proxyReq: (proxyReq, req) => {
+        console.log(`[Subdomain Proxy] ${req.method} ${req.headers.host}${req.url}`);
+      },
+      error: (err, req) => {
+        console.error(`[Subdomain Proxy Error] ${err.message} for ${req.headers.host}${req.url}`);
+      },
+    },
+  });
+
+  // Match requests from session subdomains
+  app.use((req, res, next) => {
+    const host = req.headers.host || '';
+    const match = host.match(/^([a-f0-9]{8})\.saltfish\.ai/);
+
+    if (match) {
+      const shortId = match[1];
+      const session = getSessionByShortId!(shortId);
+
+      if (!session?.podIp) {
+        res.status(404).json({ error: 'Session not found or pod not ready' });
+        return;
+      }
+
+      // Proxy to the session pod
+      subdomainProxy(req, res, next);
+      return;
+    }
+
+    // Not a session subdomain, continue to other routes
+    next();
+  });
+}
+
+// Preview proxy middleware - routes /preview/{sessionId}/* to pod IPs
+// Only needed in Kubernetes mode (local Docker mode uses direct localhost access)
+if (useKubernetes) {
+  const previewProxy = createProxyMiddleware({
+    changeOrigin: true,
+    ws: true, // Support WebSocket for Remotion HMR
+    router: (req) => {
+      // Session was attached by the middleware below
+      const session = (req as any).previewSession;
+      if (!session || !session.podIp) {
+        console.log('[Proxy Router] No session attached, using fallback');
+        return 'http://localhost:3000';
+      }
+      const target = `http://${session.podIp}:3000`;
+      console.log(`[Proxy Router] Routing to ${target}`);
+      return target;
+    },
+    on: {
+      proxyReq: (proxyReq, req, res) => {
+        console.log(`[Proxy] Forwarding ${req.method} ${req.url} -> ${proxyReq.path}`);
+      },
+      proxyRes: (proxyRes, req, res) => {
+        console.log(`[Proxy] Response: ${proxyRes.statusCode} for ${req.url}`);
+      },
+      error: (err, req, res) => {
+        console.error(`[Proxy Error] ${err.message} for ${req.url}`);
+      },
+    },
+  });
+
+  app.use('/preview/:sessionId', (req, res, next) => {
+    const { sessionId } = req.params;
+    console.log(`[Preview Middleware] Request for session ${sessionId}, URL: ${req.url}`);
+
+    // Look up session to get pod IP
+    const session = getSession(sessionId);
+    if (!session || !session.podIp) {
+      console.log(`[Preview Middleware] Session ${sessionId} not found`);
+      res.status(404).json({ error: 'Session not found or pod not ready' });
+      return;
+    }
+
+    console.log(`[Preview Middleware] Found session, podIp: ${session.podIp}`);
+    // Attach session to request for the proxy router to use
+    (req as any).previewSession = session;
+    // Forward to proxy
+    previewProxy(req, res, next);
+  });
+
+  // Catch Vite HMR paths that use absolute URLs (/@react-refresh, /src/*, etc.)
+  // These come from the iframe but have absolute paths, so we use Referer to find the session
+  const viteHmrPaths = ['/@react-refresh', '/@vite', '/src/', '/node_modules/', '/@fs/'];
+  app.use((req, res, next) => {
+    // Check if this is a Vite HMR path
+    const isVitePath = viteHmrPaths.some(p => req.path.startsWith(p));
+    if (!isVitePath) {
+      return next();
+    }
+
+    // Extract sessionId from Referer header
+    const referer = req.headers.referer;
+    const match = referer?.match(/\/preview\/([^/]+)/);
+    const sessionId = match?.[1];
+
+    if (!sessionId) {
+      console.log(`[Vite HMR] No session in referer for ${req.path}, referer: ${referer}`);
+      return next();
+    }
+
+    const session = getSession(sessionId);
+    if (!session || !session.podIp) {
+      console.log(`[Vite HMR] Session ${sessionId} not found for ${req.path}`);
+      return next();
+    }
+
+    console.log(`[Vite HMR] Routing ${req.path} to session ${sessionId}`);
+    (req as any).previewSession = session;
+    previewProxy(req, res, next);
+  });
+}
 
 // Create router for API routes
 const router = Router();

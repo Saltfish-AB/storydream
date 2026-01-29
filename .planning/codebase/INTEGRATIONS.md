@@ -57,6 +57,19 @@
 - Implementation: User identifier passed in API requests and WebSocket messages
 - Future: Placeholder in code for auth integration (`userId?: string` parameters throughout)
 
+## DNS & CDN
+
+**Cloudflare:**
+- Type: DNS, CDN, and TLS termination
+- Domain: `saltfish.ai`
+- Usage: Session preview subdomains via wildcard DNS
+- Configuration:
+  - `*.saltfish.ai` → GKE ingress IP (proxied via Cloudflare)
+  - Universal SSL covers `*.saltfish.ai` (first-level wildcards only)
+  - SSL/TLS mode: Full (TLS between Cloudflare and origin)
+- Integration: Backend generates preview URLs as `https://{shortId}.saltfish.ai/`
+- Documentation: `docs/CLOUDFLARE_SUBDOMAIN_DEPLOYMENT.md`
+
 ## Container Orchestration
 
 **Docker:**

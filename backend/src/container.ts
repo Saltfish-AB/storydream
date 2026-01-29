@@ -18,9 +18,11 @@ const DOCKER_NETWORK = process.env.DOCKER_NETWORK || 'storydream_default';
 
 interface Session {
   id: string;
+  shortId: string; // First 8 chars of session ID
   projectId: string | null;
   containerId: string;
   containerName: string;
+  podIp: null; // Not used in Docker mode, but included for interface compatibility
   previewPort: number;
   agentPort: number;
   localSrcPath: string | null; // Path to local copy of src/ for syncing
@@ -129,9 +131,11 @@ export async function createSession(projectId?: string): Promise<Session> {
 
   const session: Session = {
     id: sessionId,
+    shortId: sessionId.substring(0, 8),
     projectId: projectId || null,
     containerId: container.id,
     containerName,
+    podIp: null, // Not used in Docker mode
     previewPort,
     agentPort,
     localSrcPath,

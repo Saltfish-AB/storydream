@@ -16,7 +16,6 @@ const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 const NAMESPACE = process.env.K8S_NAMESPACE || 'storydream';
 const PROJECT_CONTAINER_IMAGE = process.env.PROJECT_CONTAINER_IMAGE ||
   'europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v1';
-const NODE_EXTERNAL_IP = process.env.NODE_EXTERNAL_IP || '34.88.112.102';
 
 interface Session {
   id: string;
@@ -162,8 +161,7 @@ export async function createSession(projectId?: string): Promise<Session> {
   // Wait for pod to be ready and get its IP
   const podIp = await waitForPodReady(podName, 300000); // 5 minute timeout
 
-  // Create a NodePort Service for this session
-  const nodePort = await createNodePortService(serviceName, shortId);
+  // No longer creating NodePort service - preview is accessed via backend proxy
 
   const session: Session = {
     id: sessionId,
@@ -172,7 +170,7 @@ export async function createSession(projectId?: string): Promise<Session> {
     podName,
     serviceName,
     podIp,
-    previewPort: nodePort,
+    previewPort: 3000,  // Internal pod port, accessed via proxy
     agentPort: 3001,
     agentSessionId,
     createdAt: new Date(),
@@ -180,56 +178,13 @@ export async function createSession(projectId?: string): Promise<Session> {
 
   sessions.set(sessionId, session);
 
-  const previewUrl = `http://${NODE_EXTERNAL_IP}:${nodePort}`;
   console.log(`Session ${sessionId} created:`);
   console.log(`  - Pod: ${podName}`);
   console.log(`  - Pod IP: ${podIp}`);
-  console.log(`  - Service: ${serviceName}`);
-  console.log(`  - Preview: ${previewUrl}`);
+  console.log(`  - Preview: /preview/${sessionId} (via proxy)`);
   console.log(`  - Agent WS: ws://${podIp}:3001`);
 
   return session;
-}
-
-/**
- * Create a NodePort Service for a session pod
- */
-async function createNodePortService(serviceName: string, shortId: string): Promise<number> {
-  const service: k8s.V1Service = {
-    apiVersion: 'v1',
-    kind: 'Service',
-    metadata: {
-      name: serviceName,
-      namespace: NAMESPACE,
-      labels: {
-        app: 'session',
-        'session-short-id': shortId,
-      },
-    },
-    spec: {
-      selector: {
-        app: 'session',
-        'session-short-id': shortId,
-      },
-      ports: [
-        { name: 'preview', port: 3000, targetPort: 3000 as any },
-      ],
-      type: 'NodePort',
-    },
-  };
-
-  try {
-    const response = await k8sApi.createNamespacedService({ namespace: NAMESPACE, body: service });
-    const nodePort = response.spec?.ports?.[0]?.nodePort;
-    if (!nodePort) {
-      throw new Error('NodePort not assigned');
-    }
-    console.log(`Service ${serviceName} created with NodePort ${nodePort}`);
-    return nodePort;
-  } catch (error: any) {
-    console.error('Failed to create service:', error.body?.message || error.message);
-    throw error;
-  }
 }
 
 /**
@@ -274,7 +229,7 @@ async function waitForPodReady(podName: string, timeout: number): Promise<string
 }
 
 /**
- * Destroy a session by deleting its pod and service
+ * Destroy a session by deleting its pod
  */
 export async function destroySession(sessionId: string): Promise<void> {
   const session = sessions.get(sessionId);
@@ -294,20 +249,7 @@ export async function destroySession(sessionId: string): Promise<void> {
     }
   }
 
-  // Delete the service
-  try {
-    await k8sApi.deleteNamespacedService({
-      name: session.serviceName,
-      namespace: NAMESPACE,
-    });
-    console.log(`Service ${session.serviceName} deleted`);
-  } catch (error: any) {
-    if (error.statusCode !== 404) {
-      console.error(`Error deleting service ${session.serviceName}:`, error.body?.message || error.message);
-    }
-  }
-
-  // Delete the pod
+  // Delete the pod (no NodePort service to delete - preview is accessed via proxy)
   try {
     await k8sApi.deleteNamespacedPod({
       name: session.podName,
@@ -374,6 +316,15 @@ export function getSession(sessionId: string): Session | undefined {
   return sessions.get(sessionId);
 }
 
+export function getSessionByShortId(shortId: string): Session | undefined {
+  for (const session of sessions.values()) {
+    if (session.shortId === shortId) {
+      return session;
+    }
+  }
+  return undefined;
+}
+
 export function getAllSessions(): Session[] {
   return Array.from(sessions.values());
 }
@@ -386,10 +337,15 @@ export function getAgentWebSocketUrl(session: Session): string {
 }
 
 /**
- * Get the preview URL for a session (via NodePort)
+ * Get the preview URL for a session
+ * In Kubernetes: uses subdomain (e.g., abc12345.storydream.saltfish.ai)
+ * Locally: uses localhost with port
  */
 export function getPreviewUrl(session: Session): string {
-  return `http://${NODE_EXTERNAL_IP}:${session.previewPort}`;
+  if (process.env.RUNNING_IN_KUBERNETES === 'true') {
+    return `https://${session.shortId}.storydream.saltfish.ai`;
+  }
+  return `http://localhost:${session.previewPort}`;
 }
 
 /**

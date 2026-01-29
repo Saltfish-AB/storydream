@@ -63,16 +63,19 @@ storydream/
 │       └── public/
 │
 ├── k8s/                        # Kubernetes manifests (production deployment)
-│   ├── backend-deployment.yaml
-│   ├── backend-service.yaml
-│   ├── frontend-deployment.yaml
-│   ├── frontend-service.yaml
+│   ├── backend.yaml            # Backend deployment and service
+│   ├── frontend.yaml           # Frontend deployment and service
+│   ├── ingress-wildcard.yaml   # Wildcard ingress for session subdomains (*.saltfish.ai)
 │   └── ...
 │
 ├── project-data/               # Runtime: project source files and session state
 │   ├── src-{projectId}-{sessionId}/ # Project src/ mounted in container
 │   ├── claude-{projectId}-{sessionId}/ # Agent session state (.claude/)
 │   └── ...
+│
+├── docs/                       # Deployment and operations documentation
+│   ├── CLOUDFLARE_SUBDOMAIN_DEPLOYMENT.md  # Subdomain routing setup guide
+│   └── PREVIEW_PROXY_IMPLEMENTATION.md     # (Superseded) Path-based proxy approach
 │
 ├── .planning/                  # GSD planning and analysis docs
 │   └── codebase/              # Auto-generated architecture documentation

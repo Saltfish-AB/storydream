@@ -256,15 +256,15 @@
 - Severity: **MEDIUM**
 
 **Node External IP Hardcoding:**
-- Issue: Kubernetes NodePort IP hardcoded to specific cluster IP
+- Issue: ~~Kubernetes NodePort IP hardcoded to specific cluster IP~~ **RESOLVED**
 - Files: `backend/src/websocket.ts` line 248, `backend/src/kubernetes.ts` line 19
-- Impact: Preview URLs break if node changes, hardcoded for specific infrastructure
-- Fix approach:
-  - Use Kubernetes Ingress instead of NodePort
-  - Query node information dynamically
-  - Use DNS instead of IP addresses
-  - Make configurable per environment
-- Severity: **MEDIUM**
+- Impact: ~~Preview URLs break if node changes, hardcoded for specific infrastructure~~
+- Resolution: Implemented subdomain-based routing (`{shortId}.saltfish.ai`) using:
+  - Cloudflare wildcard DNS (`*.saltfish.ai` → GKE ingress IP)
+  - Kubernetes wildcard ingress (`k8s/ingress-wildcard.yaml`)
+  - Backend subdomain router (`backend/src/api.ts` lines 34-91)
+  - See `docs/CLOUDFLARE_SUBDOMAIN_DEPLOYMENT.md` for details
+- Status: **RESOLVED** (2026-01-29)
 
 **No Health Checks or Probes:**
 - Issue: Backend has no comprehensive health check endpoint. WebSocket server has no liveliness probe
