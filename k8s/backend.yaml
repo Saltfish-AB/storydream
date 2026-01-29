@@ -16,7 +16,7 @@ spec:
       serviceAccountName: backend-sa
       containers:
         - name: backend
-          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v7
+          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v9
           ports:
             - containerPort: 8080
               name: websocket

@@ -50,7 +50,8 @@ USER node
 # Expose ports
 # 3000 - Vite dev server (Remotion preview)
 # 3001 - Agent WebSocket server
-EXPOSE 3000 3001
+# 3002 - Agent HTTP server (sync endpoint)
+EXPOSE 3000 3001 3002
 
 # Start both services
 CMD ["./start.sh"]

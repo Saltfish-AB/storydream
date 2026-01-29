@@ -15,7 +15,7 @@ const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
 const NAMESPACE = process.env.K8S_NAMESPACE || 'storydream';
 const PROJECT_CONTAINER_IMAGE = process.env.PROJECT_CONTAINER_IMAGE ||
-  'europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v1';
+  'europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v2';
 
 interface Session {
   id: string;
@@ -105,9 +105,11 @@ export async function createSession(projectId?: string): Promise<Session> {
         {
           name: 'project-container',
           image: PROJECT_CONTAINER_IMAGE,
+          imagePullPolicy: 'Always',
           ports: [
             { containerPort: 3000, name: 'preview' },
             { containerPort: 3001, name: 'agent-ws' },
+            { containerPort: 3002, name: 'agent-http' },
           ],
           env: [
             { name: 'PROJECT_ID', value: projectId || '' },
@@ -279,7 +281,7 @@ export async function syncSession(sessionId: string): Promise<void> {
   console.log(`Syncing session ${sessionId} for project ${session.projectId}...`);
 
   try {
-    const response = await fetch(`http://${session.podIp}:3001/sync`, {
+    const response = await fetch(`http://${session.podIp}:3002/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId: session.projectId }),

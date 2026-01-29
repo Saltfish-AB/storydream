@@ -202,20 +202,34 @@ The preview updates automatically via Vite HMR when you edit files.
    - Backend stops and removes container
    - All session state is lost (persistence is post-MVP)
 
-## Deployment (MVP)
+## Deployment
 
-### Development
+### Development (Docker)
 ```
 docker-compose.yml
 ├── frontend (Vite dev server)
-├── backend (Node.js + Agent SDK)
-└── [dynamic project containers]
+├── backend (Node.js orchestrator)
+└── [dynamic project containers via Docker API]
 ```
 
-### Production (MVP)
-- Frontend: Static build served via nginx
-- Backend: Node.js container with Docker socket access
-- Project containers: Dynamically created per session
+### Production (Kubernetes/GKE)
+```
+GKE Cluster (storydream namespace)
+├── frontend (Deployment + Service)
+├── backend (Deployment + Service)
+│   └── Creates session pods dynamically via K8s API
+├── session-{shortId} pods (created per user session)
+│   ├── init-container: downloads project from GCS
+│   └── project-container: agent + Remotion dev server
+├── ingress-nginx (routes *.saltfish.ai)
+└── Cloudflare (TLS termination, DNS)
+
+Storage:
+├── Firestore: project metadata, chat history
+└── GCS (storydream-data bucket): project source code, session data
+```
+
+See `docs/PROJECT_PERSISTENCE.md` for details on the sync architecture.
 
 ## API Design
 
@@ -293,18 +307,22 @@ storydream/
 
 ## Success Criteria (MVP)
 
-- [ ] User can start a session and see a default Remotion video preview
-- [ ] User can chat with the agent and request video changes
-- [ ] Agent successfully modifies Remotion code
-- [ ] Preview updates automatically without manual refresh
-- [ ] Multiple concurrent sessions work independently
-- [ ] Session cleanup works properly
+- [x] User can start a session and see a default Remotion video preview
+- [x] User can chat with the agent and request video changes
+- [x] Agent successfully modifies Remotion code
+- [x] Preview updates automatically without manual refresh
+- [x] Multiple concurrent sessions work independently
+- [x] Session cleanup works properly
 
-## Future Enhancements (Post-MVP)
+## Implemented (Post-MVP)
 
-- Kubernetes deployment with proper pod isolation
+- [x] Kubernetes deployment with proper pod isolation (GKE)
+- [x] Project persistence and retrieval (GCS + Firestore)
+- [x] Subdomain-based preview routing (`{shortId}.saltfish.ai`)
+
+## Future Enhancements
+
 - Video rendering/export to MP4
-- Project persistence and retrieval
 - Template library for common video types
 - Asset upload (images, audio)
 - Collaboration features

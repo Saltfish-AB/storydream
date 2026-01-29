@@ -55,12 +55,16 @@ Proxy: Yes (orange cloud)
 
 ## Deployment
 
-Build and deploy backend:
+Build and deploy backend (update version as needed):
 ```bash
 cd backend
-gcloud builds submit --tag europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v8 .
-kubectl set image deployment/backend backend=europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v8 -n storydream
+docker buildx build --platform linux/amd64 --push \
+  -t europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v9 .
+kubectl set image deployment/backend \
+  backend=europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v9 -n storydream
 ```
+
+**Current version:** v9
 
 Apply wildcard ingress (if not already):
 ```bash
