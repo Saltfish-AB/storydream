@@ -6,6 +6,17 @@ interface UseWebSocketOptions {
   initialMessages?: ChatMessage[];
 }
 
+interface RenderEvent {
+  type: 'render:started' | 'render:progress' | 'render:complete' | 'render:failed';
+  renderId?: string;
+  projectId?: string;
+  progress?: number;
+  outputUrl?: string;
+  error?: string;
+}
+
+type RenderEventListener = (event: RenderEvent) => void;
+
 interface UseWebSocketReturn {
   isConnected: boolean;
   isSessionActive: boolean;
@@ -15,6 +26,7 @@ interface UseWebSocketReturn {
   startSession: () => void;
   sendMessage: (content: string) => void;
   endSession: () => void;
+  subscribeToRenderEvents: (listener: RenderEventListener) => () => void;
 }
 
 // Use relative WebSocket URL - nginx proxies /ws to backend
@@ -68,6 +80,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const lastErrorRef = useRef<string>('');
   const errorTimeoutRef = useRef<number | null>(null);
   const projectIdRef = useRef<string | undefined>(projectId);
+  const renderEventListenersRef = useRef<Set<RenderEventListener>>(new Set());
 
   // Update projectId ref when it changes
   useEffect(() => {
@@ -190,6 +203,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         console.error('Server error:', message.message);
         setIsLoading(false);
         break;
+
+      // Handle render events
+      case 'render:started':
+      case 'render:progress':
+      case 'render:complete':
+      case 'render:failed':
+        console.log('Render event:', message);
+        renderEventListenersRef.current.forEach(listener => {
+          try {
+            listener(message as RenderEvent);
+          } catch (error) {
+            console.error('Error in render event listener:', error);
+          }
+        });
+        break;
     }
   }, []);
 
@@ -256,6 +284,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }
   }, []);
 
+  const subscribeToRenderEvents = useCallback((listener: RenderEventListener) => {
+    renderEventListenersRef.current.add(listener);
+    return () => {
+      renderEventListenersRef.current.delete(listener);
+    };
+  }, []);
+
   return {
     isConnected,
     isSessionActive,
@@ -265,5 +300,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     startSession,
     sendMessage,
     endSession,
+    subscribeToRenderEvents,
   };
 }

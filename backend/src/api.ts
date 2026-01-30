@@ -10,6 +10,13 @@ import {
   deleteProject,
 } from './projects.js';
 import { getMessages } from './firestore.js';
+import {
+  createRenderJob,
+  getRenderJob,
+  getProjectRenders,
+  cancelRenderJob,
+  getRenderJobLogs,
+} from './render.js';
 
 // Use Kubernetes when running in K8s, Docker when running locally
 const useKubernetes = process.env.RUNNING_IN_KUBERNETES === 'true';
@@ -286,6 +293,111 @@ router.get('/projects/:projectId/messages', async (req: Request<ProjectParams>, 
   } catch (error) {
     console.error('Error getting messages:', error);
     res.status(500).json({ error: 'Failed to get messages' });
+  }
+});
+
+// ============ Render Routes ============
+
+interface RenderParams {
+  projectId: string;
+}
+
+interface RenderIdParams {
+  renderId: string;
+}
+
+// Create a new render job
+router.post('/projects/:projectId/render', async (req: Request<RenderParams>, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { compositionId, format } = req.body;
+
+    // Verify project exists
+    const project = await getProject(projectId);
+    if (!project) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const job = await createRenderJob({ projectId, compositionId, format });
+    res.status(201).json(job);
+  } catch (error) {
+    console.error('Error creating render job:', error);
+    res.status(500).json({ error: 'Failed to create render job' });
+  }
+});
+
+// Get all renders for a project
+router.get('/projects/:projectId/renders', async (req: Request<RenderParams>, res: Response) => {
+  try {
+    const { projectId } = req.params;
+
+    // Verify project exists
+    const project = await getProject(projectId);
+    if (!project) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const renders = getProjectRenders(projectId);
+    res.json({ renders });
+  } catch (error) {
+    console.error('Error getting renders:', error);
+    res.status(500).json({ error: 'Failed to get renders' });
+  }
+});
+
+// Get a specific render job
+router.get('/renders/:renderId', async (req: Request<RenderIdParams>, res: Response) => {
+  try {
+    const { renderId } = req.params;
+    const render = getRenderJob(renderId);
+
+    if (!render) {
+      res.status(404).json({ error: 'Render not found' });
+      return;
+    }
+
+    res.json(render);
+  } catch (error) {
+    console.error('Error getting render:', error);
+    res.status(500).json({ error: 'Failed to get render' });
+  }
+});
+
+// Cancel a render job
+router.delete('/renders/:renderId', async (req: Request<RenderIdParams>, res: Response) => {
+  try {
+    const { renderId } = req.params;
+    const success = await cancelRenderJob(renderId);
+
+    if (!success) {
+      res.status(404).json({ error: 'Render not found or already completed' });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error cancelling render:', error);
+    res.status(500).json({ error: 'Failed to cancel render' });
+  }
+});
+
+// Get render job logs
+router.get('/renders/:renderId/logs', async (req: Request<RenderIdParams>, res: Response) => {
+  try {
+    const { renderId } = req.params;
+    const logs = await getRenderJobLogs(renderId);
+
+    if (logs === null) {
+      res.status(404).json({ error: 'Logs not found' });
+      return;
+    }
+
+    res.json({ logs });
+  } catch (error) {
+    console.error('Error getting render logs:', error);
+    res.status(500).json({ error: 'Failed to get render logs' });
   }
 });
 

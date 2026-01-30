@@ -25,3 +25,20 @@ export interface CreateProjectRequest {
   name: string;
   description?: string;
 }
+
+// Render types
+export interface RenderJob {
+  renderId: string;
+  projectId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  createdAt: string;
+  completedAt?: string;
+  outputUrl?: string;
+  error?: string;
+  progress?: number;
+}
+
+export interface RenderJobRequest {
+  compositionId?: string;
+  format?: 'mp4' | 'webm';
+}

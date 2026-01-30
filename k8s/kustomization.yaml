@@ -10,4 +10,5 @@ resources:
   - frontend.yaml
   - backend.yaml
   - ingress.yaml
+  - render-resources.yaml
   # secrets.yaml - apply separately, not tracked in git

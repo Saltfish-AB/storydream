@@ -8,6 +8,7 @@ const { createSession, destroySession, getSession, syncSession, updateSessionAge
 import { saveMessage, getRecentMessages } from './firestore.js';
 import { getProject, updateProject } from './projects.js';
 import type { AgentAction } from './types.js';
+import { addRenderEventListener, type RenderEvent } from './render.js';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -23,10 +24,28 @@ interface ClientConnection {
 const clients = new Map<WebSocket, ClientConnection>();
 const SESSION_CLEANUP_DELAY = 30000; // 30 seconds grace period
 
+// Track clients by project for render event notifications
+function getClientsByProject(projectId: string): ClientConnection[] {
+  return Array.from(clients.values()).filter(client => client.projectId === projectId);
+}
+
 export function createWebSocketServer(port: number): WebSocketServer {
   const wss = new WebSocketServer({ port });
 
   console.log(`Backend WebSocket server listening on port ${port}`);
+
+  // Subscribe to render events and forward to relevant clients
+  addRenderEventListener((event: RenderEvent) => {
+    const projectId = 'projectId' in event ? event.projectId : null;
+    if (!projectId) return;
+
+    const projectClients = getClientsByProject(projectId);
+    projectClients.forEach(client => {
+      sendToClient(client.ws, event);
+    });
+
+    console.log(`[Render Event] ${event.type} for project ${projectId}, notified ${projectClients.length} clients`);
+  });
 
   wss.on('connection', (ws: WebSocket) => {
     console.log('Frontend client connected');

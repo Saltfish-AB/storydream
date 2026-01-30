@@ -4,6 +4,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { getProject } from '../api';
 import { Chat } from './Chat';
 import { VideoPreview } from './VideoPreview';
+import { RenderButton } from './RenderButton';
 import type { Project, ChatMessage } from '../types';
 
 export function ProjectWorkspace() {
@@ -36,7 +37,7 @@ export function ProjectWorkspace() {
     loadProject();
   }, [projectId]);
 
-  const { isConnected, isSessionActive, isLoading, previewUrl, messages, startSession, sendMessage } = useWebSocket({
+  const { isConnected, isSessionActive, isLoading, previewUrl, messages, startSession, sendMessage, subscribeToRenderEvents } = useWebSocket({
     projectId,
     initialMessages,
   });
@@ -107,6 +108,9 @@ export function ProjectWorkspace() {
             {isSessionActive ? 'Session active' : isLoading ? 'Starting session...' : 'Connecting...'}
           </p>
         </div>
+        {projectId && isSessionActive && (
+          <RenderButton projectId={projectId} subscribeToRenderEvents={subscribeToRenderEvents} />
+        )}
         {!isConnected && <span className="text-xs text-yellow-500">Connecting to server...</span>}
       </div>
 

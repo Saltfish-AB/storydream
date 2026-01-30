@@ -1,6 +1,6 @@
 // API client for StoryDream backend
 
-import type { Project, ChatMessage, CreateProjectRequest } from './types';
+import type { Project, ChatMessage, CreateProjectRequest, RenderJob, RenderJobRequest } from './types';
 
 // Use relative URL in production (nginx proxies /api to backend)
 // Use localhost for local development
@@ -61,4 +61,28 @@ export async function deleteProject(projectId: string): Promise<void> {
 export async function getMessages(projectId: string): Promise<ChatMessage[]> {
   const data = await fetchApi<{ messages: ChatMessage[] }>(`/projects/${projectId}/messages`);
   return data.messages;
+}
+
+// Renders
+
+export async function createRender(projectId: string, options?: RenderJobRequest): Promise<RenderJob> {
+  return fetchApi(`/projects/${projectId}/render`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  });
+}
+
+export async function getProjectRenders(projectId: string): Promise<RenderJob[]> {
+  const data = await fetchApi<{ renders: RenderJob[] }>(`/projects/${projectId}/renders`);
+  return data.renders;
+}
+
+export async function getRender(renderId: string): Promise<RenderJob> {
+  return fetchApi(`/renders/${renderId}`);
+}
+
+export async function cancelRender(renderId: string): Promise<void> {
+  await fetchApi(`/renders/${renderId}`, {
+    method: 'DELETE',
+  });
 }

@@ -1,0 +1,102 @@
+---
+# Service Account for render jobs
+# Needs Workload Identity binding to access GCS
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: storydream-render
+  namespace: storydream
+  annotations:
+    # Workload Identity: bind to GCP service account
+    iam.gke.io/gcp-service-account: storydream-render@saltfish-434012.iam.gserviceaccount.com
+
+---
+# Resource quota for render jobs
+# Only limits job count - CPU/memory limits are handled via LimitRange on render jobs
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: render-quota
+  namespace: storydream
+spec:
+  hard:
+    # Limit number of concurrent render jobs only
+    count/jobs.batch: "10"
+  scopeSelector:
+    matchExpressions:
+      - scopeName: PriorityClass
+        operator: In
+        values:
+          - render-job-priority
+
+---
+# Role for watching render job status
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: render-job-watcher
+  namespace: storydream
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+
+---
+# Bind the role to the backend service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-render-job-watcher
+  namespace: storydream
+subjects:
+  - kind: ServiceAccount
+    name: backend-sa
+    namespace: storydream
+roleRef:
+  kind: Role
+  name: render-job-watcher
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Network policy for render jobs (optional - for security)
+# Allows render pods to only access GCS and nothing else
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: render-job-egress
+  namespace: storydream
+spec:
+  podSelector:
+    matchLabels:
+      app: storydream-render
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTPS for GCS access
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Priority class for render jobs (lower priority than interactive sessions)
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: render-job-priority
+value: 100
+globalDefault: false
+description: "Priority class for background render jobs"
