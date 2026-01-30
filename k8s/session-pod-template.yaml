@@ -21,7 +21,7 @@ spec:
   serviceAccountName: session-sa
   containers:
     - name: project-container
-      image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v1
+      image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v5
       ports:
         - containerPort: 3000
           name: preview

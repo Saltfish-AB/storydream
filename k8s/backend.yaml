@@ -32,7 +32,7 @@ spec:
             - name: K8S_NAMESPACE
               value: "storydream"
             - name: PROJECT_CONTAINER_IMAGE
-              value: "europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v2"
+              value: "europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v5"
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:

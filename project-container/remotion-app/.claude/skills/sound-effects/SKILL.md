@@ -1,3 +1,10 @@
+---
+name: sound-effects
+description: Sound effects library for Remotion video productions
+metadata:
+  tags: remotion, audio, sound, sfx, effects
+---
+
 # Sound Effects Library
 
 A curated collection of sound effects for Remotion video productions. This skill provides access to professional-quality audio assets organized by category.

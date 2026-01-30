@@ -52,15 +52,17 @@ wss.on('connection', (ws: WebSocket) => {
           // Always bypass permissions (safe since agent runs in sandboxed container)
           permissionMode: 'bypassPermissions',
           allowDangerouslySkipPermissions: true,
+          // Load skills and CLAUDE.md from project directory
+          // All tools including Skill are allowed by default
+          settingSources: ['user', 'project'],
         };
 
-        // Only set systemPrompt and other init options for new sessions
+        // Only set systemPrompt for new sessions
         if (!sessionId) {
           queryOptions.systemPrompt = {
             type: 'preset',
             preset: 'claude_code',
           };
-          queryOptions.settingSources = ['project'];
         } else {
           // Resume existing session to maintain conversation context
           queryOptions.resume = sessionId;
