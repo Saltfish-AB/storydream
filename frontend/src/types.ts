@@ -1,5 +1,12 @@
 // Shared types for StoryDream frontend
 
+export interface ImageAttachment {
+  type: 'image';
+  data: string;      // base64 encoded (without data URI prefix)
+  mediaType: string; // 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+  name?: string;     // original filename for display
+}
+
 export interface Project {
   id: string;
   userId: string;
@@ -18,6 +25,7 @@ export interface ChatMessage {
   projectId?: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  attachments?: ImageAttachment[];
   createdAt?: string;
 }
 

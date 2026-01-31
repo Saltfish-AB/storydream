@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/frontend:v2
+          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/frontend:v3
           ports:
             - containerPort: 80
           resources:

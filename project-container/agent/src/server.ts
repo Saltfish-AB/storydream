@@ -189,14 +189,37 @@ wss.on('connection', (ws: WebSocket) => {
       const message = JSON.parse(data.toString());
 
       if (message.type === 'prompt') {
-        console.log('Received prompt:', message.content.substring(0, 100));
+        console.log('Received prompt:', message.content?.substring(0, 100) || '(no text)', message.attachments ? `with ${message.attachments.length} attachments` : '');
+
+        // Build content - either string or array of content blocks for multimodal
+        let content: string | any[];
+        if (message.attachments && message.attachments.length > 0) {
+          // Multimodal: images first, then text (Claude best practice)
+          content = [
+            ...message.attachments.map((att: any) => ({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: att.mediaType,
+                data: att.data,
+              },
+            })),
+          ];
+          // Add text content if present
+          if (message.content) {
+            content.push({ type: 'text', text: message.content });
+          }
+        } else {
+          // Text only
+          content = message.content || '';
+        }
 
         // Format as SDK user message
         const userMessage = {
           type: 'user' as const,
           message: {
             role: 'user' as const,
-            content: message.content,
+            content,
           },
         };
 

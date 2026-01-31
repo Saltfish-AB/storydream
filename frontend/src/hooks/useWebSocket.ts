@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, ImageAttachment } from '../types';
 
 interface UseWebSocketOptions {
   projectId?: string;
@@ -24,7 +24,7 @@ interface UseWebSocketReturn {
   previewUrl: string | null;
   messages: ChatMessage[];
   startSession: () => void;
-  sendMessage: (content: string) => void;
+  sendMessage: (content: string, attachments?: ImageAttachment[]) => void;
   endSession: () => void;
   subscribeToRenderEvents: (listener: RenderEventListener) => () => void;
 }
@@ -263,9 +263,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   }, [initialMessages.length]);
 
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, attachments?: ImageAttachment[]) => {
       if (wsRef.current?.readyState === WebSocket.OPEN && isSessionActive) {
-        setMessages((prev) => [...prev, { role: 'user', content }]);
+        setMessages((prev) => [...prev, { role: 'user', content, attachments }]);
         setIsLoading(true);
         currentAssistantMessage.current = '';
 
@@ -273,6 +273,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
           JSON.stringify({
             type: 'message:send',
             content,
+            attachments,
           })
         );
       }

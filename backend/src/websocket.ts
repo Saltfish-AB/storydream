@@ -7,7 +7,7 @@ const containerModule = useKubernetes
 const { createSession, destroySession, getSession, syncSession, updateSessionAgentId } = containerModule;
 import { saveMessage, getRecentMessages } from './firestore.js';
 import { getProject, updateProject } from './projects.js';
-import type { AgentAction } from './types.js';
+import type { AgentAction, ImageAttachment } from './types.js';
 import { addRenderEventListener, type RenderEvent } from './render.js';
 
 interface ClientConnection {
@@ -19,6 +19,8 @@ interface ClientConnection {
   // Track current assistant response for saving
   currentAssistantResponse: string;
   currentActions: AgentAction[];
+  // Keepalive tracking
+  isAlive: boolean;
 }
 
 const clients = new Map<WebSocket, ClientConnection>();
@@ -33,6 +35,24 @@ export function createWebSocketServer(port: number): WebSocketServer {
   const wss = new WebSocketServer({ port });
 
   console.log(`Backend WebSocket server listening on port ${port}`);
+
+  // Ping all clients every 30 seconds to keep connections alive through Cloudflare
+  const PING_INTERVAL = 30000;
+  const pingInterval = setInterval(() => {
+    clients.forEach((client, ws) => {
+      if (!client.isAlive) {
+        console.log('Client failed to respond to ping, terminating');
+        ws.terminate();
+        return;
+      }
+      client.isAlive = false;
+      ws.ping();
+    });
+  }, PING_INTERVAL);
+
+  wss.on('close', () => {
+    clearInterval(pingInterval);
+  });
 
   // Subscribe to render events and forward to relevant clients
   addRenderEventListener((event: RenderEvent) => {
@@ -58,8 +78,14 @@ export function createWebSocketServer(port: number): WebSocketServer {
       cleanupTimer: null,
       currentAssistantResponse: '',
       currentActions: [],
+      isAlive: true,
     };
     clients.set(ws, client);
+
+    // Handle pong responses for keepalive
+    ws.on('pong', () => {
+      client.isAlive = true;
+    });
 
     ws.on('message', async (data: Buffer) => {
       try {
@@ -109,7 +135,7 @@ async function handleMessage(client: ClientConnection, message: any): Promise<vo
       break;
 
     case 'message:send':
-      await handleMessageSend(client, message.content);
+      await handleMessageSend(client, message.content, message.attachments);
       break;
 
     case 'session:end':
@@ -279,7 +305,7 @@ async function handleSessionStart(client: ClientConnection, projectId?: string):
   });
 }
 
-async function handleMessageSend(client: ClientConnection, content: string): Promise<void> {
+async function handleMessageSend(client: ClientConnection, content: string, attachments?: ImageAttachment[]): Promise<void> {
   if (!client.agentWs || client.agentWs.readyState !== WebSocket.OPEN) {
     sendToClient(client.ws, {
       type: 'error',
@@ -288,7 +314,7 @@ async function handleMessageSend(client: ClientConnection, content: string): Pro
     return;
   }
 
-  console.log('Forwarding message to agent:', content.substring(0, 100));
+  console.log('Forwarding message to agent:', content.substring(0, 100), attachments ? `with ${attachments.length} attachments` : '');
 
   // Save user message to Firestore if we have a project
   if (client.projectId) {
@@ -296,6 +322,7 @@ async function handleMessageSend(client: ClientConnection, content: string): Pro
       await saveMessage(client.projectId, {
         role: 'user',
         content,
+        attachments,
       });
       console.log(`Saved user message for project ${client.projectId}`);
     } catch (error) {
@@ -307,10 +334,11 @@ async function handleMessageSend(client: ClientConnection, content: string): Pro
   client.currentAssistantResponse = '';
   client.currentActions = [];
 
-  // Forward to agent
+  // Forward to agent (include attachments if present)
   client.agentWs.send(JSON.stringify({
     type: 'prompt',
     content,
+    attachments,
   }));
 }
 
