@@ -15,7 +15,7 @@ const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
 const NAMESPACE = process.env.K8S_NAMESPACE || 'storydream';
 const PROJECT_CONTAINER_IMAGE = process.env.PROJECT_CONTAINER_IMAGE ||
-  'europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v2';
+  'europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v6';
 
 interface Session {
   id: string;

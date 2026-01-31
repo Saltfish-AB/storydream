@@ -16,7 +16,7 @@ spec:
       serviceAccountName: backend-sa
       containers:
         - name: backend
-          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v9
+          image: europe-north1-docker.pkg.dev/saltfish-434012/storydream/backend:v10
           ports:
             - containerPort: 8080
               name: websocket
@@ -32,7 +32,7 @@ spec:
             - name: K8S_NAMESPACE
               value: "storydream"
             - name: PROJECT_CONTAINER_IMAGE
-              value: "europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v5"
+              value: "europe-north1-docker.pkg.dev/saltfish-434012/storydream/project-container:v6"
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:

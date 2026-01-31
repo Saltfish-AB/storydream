@@ -143,11 +143,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         lastErrorRef.current = '';
       }, 5000);
 
-      if (!isSessionActive || isLoading) {
-        console.log('Preview error received but session not ready:', error.message);
+      if (!isSessionActive) {
+        console.log('Preview error received but session not active:', error.message);
         return;
       }
 
+      // With streaming input mode, we can send messages even while agent is busy
+      // The agent server will queue them automatically
       console.log('Preview error received, sending to agent:', error.message);
 
       const errorReport = formatErrorReport(error);
@@ -174,7 +176,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         clearTimeout(errorTimeoutRef.current);
       }
     };
-  }, [isSessionActive, isLoading]);
+  }, [isSessionActive]);
 
   const handleMessage = useCallback((message: any) => {
     switch (message.type) {

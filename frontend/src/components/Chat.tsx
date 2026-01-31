@@ -21,7 +21,7 @@ export function Chat({ messages, isLoading, onSendMessage }: ChatProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isLoading) {
+    if (input.trim()) {
       onSendMessage(input.trim());
       setInput('');
     }
@@ -100,9 +100,8 @@ export function Chat({ messages, isLoading, onSendMessage }: ChatProps) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe your video changes..."
-            disabled={isLoading}
-            className="flex-1 text-white rounded-xl px-4 py-2 outline-none disabled:opacity-50 transition-all"
+            placeholder={isLoading ? "Send another message (will be queued)..." : "Describe your video changes..."}
+            className="flex-1 text-white rounded-xl px-4 py-2 outline-none transition-all"
             style={{
               background: 'rgba(40, 35, 32, 0.8)',
               border: '1px solid var(--glass-border)',
@@ -110,13 +109,13 @@ export function Chat({ messages, isLoading, onSendMessage }: ChatProps) {
           />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim()}
             className="disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-colors"
             style={{
-              background: !input.trim() || isLoading ? 'rgba(40, 35, 32, 0.8)' : 'var(--accent-warm)',
+              background: !input.trim() ? 'rgba(40, 35, 32, 0.8)' : 'var(--accent-warm)',
             }}
           >
-            Send
+            {isLoading ? 'Queue' : 'Send'}
           </button>
         </div>
       </form>
