@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Card } from '@/components/ui/card';
 
 export interface SequenceInfo {
   id: string;
@@ -17,10 +18,10 @@ interface TimelineProps {
 }
 
 const TRACK_COLORS: Record<string, string> = {
-  scene: 'var(--accent-warm)',
-  audio: '#6B8E6B',
-  text: '#8B7EC8',
-  effect: '#C4A86B',
+  scene: 'hsl(15 100% 60%)',    // Primary orange
+  audio: 'hsl(120 25% 50%)',    // Sage green
+  text: 'hsl(255 40% 60%)',     // Lavender
+  effect: 'hsl(45 50% 55%)',    // Gold
 };
 
 const TRACK_ORDER: SequenceInfo['type'][] = ['scene', 'audio', 'text', 'effect'];
@@ -91,39 +92,24 @@ export function Timeline({
   const hasSequences = sequences.length > 0;
 
   return (
-    <div
-      className="w-full flex-shrink-0 rounded-2xl overflow-hidden"
-      style={{
-        background: 'var(--glass-bg)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid var(--glass-border)',
-      }}
-    >
+    <Card className="w-full flex-shrink-0 overflow-hidden">
       <div className="flex h-full">
         {/* Track labels column */}
-        <div className="w-[80px] flex-shrink-0 border-r" style={{ borderColor: 'var(--glass-border)' }}>
-          <div
-            className="h-7 flex items-center px-3 text-xs border-b"
-            style={{ color: 'var(--text-muted)', borderColor: 'var(--glass-border)' }}
-          >
+        <div className="w-[80px] flex-shrink-0 border-r">
+          <div className="h-7 flex items-center px-3 text-xs text-muted-foreground border-b bg-muted/50">
             Tracks
           </div>
           {hasSequences ? (
             tracks.map((track) => (
               <div
                 key={track.type}
-                className="h-10 flex items-center px-3 text-xs border-b"
-                style={{ color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}
+                className="h-10 flex items-center px-3 text-xs text-muted-foreground border-b"
               >
                 {track.name}
               </div>
             ))
           ) : (
-            <div
-              className="h-10 flex items-center px-3 text-xs border-b"
-              style={{ color: 'var(--text-muted)', borderColor: 'var(--glass-border)' }}
-            >
+            <div className="h-10 flex items-center px-3 text-xs text-muted-foreground border-b">
               No tracks
             </div>
           )}
@@ -133,8 +119,7 @@ export function Timeline({
         <div className="flex-1 min-w-0">
           {/* Time ruler */}
           <div
-            className="h-7 relative border-b cursor-pointer"
-            style={{ borderColor: 'var(--glass-border)' }}
+            className="h-7 relative border-b bg-muted/50 cursor-pointer"
             onClick={handleTimelineClick}
           >
             {timeMarkers.map((seconds) => (
@@ -143,26 +128,17 @@ export function Timeline({
                 className="absolute top-0 h-full flex flex-col justify-end pb-1"
                 style={{ left: `${secondsToPercent(seconds)}%` }}
               >
-                <div
-                  className="text-xs px-1"
-                  style={{ color: 'var(--text-muted)', fontSize: '10px' }}
-                >
+                <div className="text-[10px] px-1 text-muted-foreground">
                   {seconds}s
                 </div>
-                <div
-                  className="w-px h-2"
-                  style={{ background: 'var(--glass-border)' }}
-                />
+                <div className="w-px h-2 bg-border" />
               </div>
             ))}
 
             {/* Playhead on ruler */}
             <div
-              className="absolute top-0 h-full w-0.5 z-10"
-              style={{
-                left: `${frameToPercent(playheadFrame)}%`,
-                background: '#FFFFFF',
-              }}
+              className="absolute top-0 h-full w-0.5 z-10 bg-primary"
+              style={{ left: `${frameToPercent(playheadFrame)}%` }}
             />
           </div>
 
@@ -173,17 +149,15 @@ export function Timeline({
                 <div
                   key={track.type}
                   className="h-10 relative border-b"
-                  style={{ borderColor: 'var(--glass-border)' }}
                 >
                   {track.items.map((item) => (
                     <div
                       key={item.id}
-                      className="absolute top-1 bottom-1 rounded-md flex items-center px-2 text-xs font-medium truncate cursor-pointer hover:brightness-110 transition-all"
+                      className="absolute top-1 bottom-1 rounded-md flex items-center px-2 text-xs font-medium truncate cursor-pointer hover:brightness-110 transition-all text-white"
                       style={{
                         left: `${frameToPercent(item.from)}%`,
                         width: `${frameToPercent(item.durationInFrames)}%`,
                         background: TRACK_COLORS[item.type],
-                        color: '#FFFFFF',
                       }}
                       title={`${item.name} (${item.from}-${item.from + item.durationInFrames} frames)`}
                     >
@@ -193,26 +167,22 @@ export function Timeline({
                 </div>
               ))
             ) : (
-              <div
-                className="h-10 relative border-b flex items-center justify-center"
-                style={{ borderColor: 'var(--glass-border)', color: 'var(--text-muted)' }}
-              >
+              <div className="h-10 relative border-b flex items-center justify-center text-muted-foreground">
                 <span className="text-xs">Waiting for composition data...</span>
               </div>
             )}
 
             {/* Playhead line */}
             <div
-              className="absolute top-0 bottom-0 w-0.5 z-10 pointer-events-none"
+              className="absolute top-0 bottom-0 w-0.5 z-10 pointer-events-none bg-primary"
               style={{
                 left: `${frameToPercent(playheadFrame)}%`,
-                background: '#FFFFFF',
-                boxShadow: '0 0 8px rgba(255, 255, 255, 0.5)',
+                boxShadow: '0 0 8px hsl(var(--primary) / 0.5)',
               }}
             />
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

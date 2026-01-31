@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createRender } from '../api';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Play, Loader2, Download, X, AlertCircle } from 'lucide-react';
 
 interface RenderEvent {
   type: 'render:started' | 'render:progress' | 'render:complete' | 'render:failed';
@@ -104,86 +107,76 @@ export function RenderButton({ projectId, subscribeToRenderEvents, onRenderEvent
   return (
     <div className="flex items-center gap-3">
       {/* Render Button */}
-      <button
+      <Button
         onClick={handleRender}
         disabled={renderState.isRendering}
-        className={`
-          flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-          ${renderState.isRendering
-            ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-            : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-500 hover:to-blue-500 shadow-lg hover:shadow-purple-500/25'
-          }
-        `}
       >
         {renderState.isRendering ? (
           <>
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
+            <Loader2 className="w-4 h-4 animate-spin" />
             <span>Rendering...</span>
           </>
         ) : (
           <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M7 4l10 8-10 8V4z" />
-            </svg>
+            <Play className="w-4 h-4" />
             <span>Render Video</span>
           </>
         )}
-      </button>
+      </Button>
 
       {/* Progress Indicator */}
       {renderState.isRendering && (
         <div className="flex items-center gap-2">
-          <div className="w-32 h-2 bg-zinc-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300"
-              style={{ width: `${renderState.progress}%` }}
-            />
-          </div>
-          <span className="text-xs text-zinc-400">{renderState.progress}%</span>
+          <Progress value={renderState.progress} className="w-32 h-2" />
+          <span className="text-xs text-muted-foreground">{renderState.progress}%</span>
         </div>
       )}
 
       {/* Completed State */}
       {renderState.status === 'completed' && renderState.outputUrl && (
         <div className="flex items-center gap-2">
-          <a
-            href={renderState.outputUrl}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors"
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download
-          </a>
-          <button
+            <a
+              href={renderState.outputUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleDismiss}
-            className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="h-8 w-8"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
       )}
 
       {/* Error State */}
       {renderState.status === 'failed' && (
         <div className="flex items-center gap-2">
-          <span className="text-sm text-red-400">{renderState.error || 'Render failed'}</span>
-          <button
+          <div className="flex items-center gap-1 text-sm text-destructive">
+            <AlertCircle className="w-4 h-4" />
+            <span>{renderState.error || 'Render failed'}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleDismiss}
-            className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="h-8 w-8"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
       )}
     </div>

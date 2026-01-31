@@ -1,3 +1,6 @@
+import { Button } from '@/components/ui/button';
+import { Loader2, Sparkles } from 'lucide-react';
+
 interface LandingProps {
   onStart: () => void;
   isConnected: boolean;
@@ -6,37 +9,42 @@ interface LandingProps {
 
 export function Landing({ onStart, isConnected, isLoading }: LandingProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
       <div className="max-w-2xl text-center">
-        <h1 className="text-5xl font-bold text-white mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
+          <Sparkles className="w-8 h-8" />
+        </div>
+
+        <h1 className="text-5xl font-bold text-foreground mb-4">
           StoryDream
         </h1>
-        <p className="text-xl text-zinc-400 mb-8">
+        <p className="text-xl text-muted-foreground mb-8">
           Create stunning videos with AI. Just describe what you want.
         </p>
 
-        <button
+        <Button
           onClick={onStart}
           disabled={!isConnected || isLoading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white text-lg px-8 py-4 rounded-xl transition-all transform hover:scale-105 disabled:transform-none"
+          size="lg"
+          className="text-lg px-8 py-6 h-auto"
         >
           {isLoading ? (
-            <span className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
               Starting...
-            </span>
+            </>
           ) : (
             'Start Creating'
           )}
-        </button>
+        </Button>
 
         {!isConnected && (
-          <p className="mt-4 text-yellow-500 text-sm">
+          <p className="mt-4 text-amber-600 text-sm">
             Connecting to server...
           </p>
         )}
 
-        <div className="mt-12 text-zinc-500 text-sm">
+        <div className="mt-12 text-muted-foreground text-sm">
           <p>Powered by Remotion + Claude</p>
         </div>
       </div>

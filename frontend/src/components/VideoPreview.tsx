@@ -1,3 +1,5 @@
+import { Loader2, VideoOff } from 'lucide-react';
+
 interface VideoPreviewProps {
   previewUrl: string | null;
   isLoading: boolean;
@@ -6,15 +8,18 @@ interface VideoPreviewProps {
 export function VideoPreview({ previewUrl, isLoading }: VideoPreviewProps) {
   if (!previewUrl) {
     return (
-      <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
-        <div className="text-center" style={{ color: 'var(--text-muted)' }}>
+      <div className="w-full h-full flex items-center justify-center bg-muted/50">
+        <div className="text-center text-muted-foreground">
           {isLoading ? (
             <div className="flex flex-col items-center gap-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--accent-warm)' }}></div>
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p>Starting session...</p>
             </div>
           ) : (
-            <p>No preview available</p>
+            <div className="flex flex-col items-center gap-4">
+              <VideoOff className="h-12 w-12 opacity-50" />
+              <p>No preview available</p>
+            </div>
           )}
         </div>
       </div>
@@ -22,7 +27,7 @@ export function VideoPreview({ previewUrl, isLoading }: VideoPreviewProps) {
   }
 
   return (
-    <div className="w-full h-full" style={{ background: 'var(--bg-primary)' }}>
+    <div className="w-full h-full bg-muted/50">
       <iframe
         key={previewUrl}
         src={previewUrl}

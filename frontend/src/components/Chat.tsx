@@ -1,4 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Send, Loader2, MessageSquare } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -28,95 +33,79 @@ export function Chat({ messages, isLoading, onSendMessage }: ChatProps) {
   };
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{
-        background: 'var(--glass-bg)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-      }}
-    >
+    <div className="flex flex-col h-full bg-card border-l">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
-            Describe the video you want to create...
-          </div>
-        )}
-
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${
-              message.role === 'user'
-                ? 'justify-end'
-                : message.role === 'system'
-                ? 'justify-center'
-                : 'justify-start'
-            }`}
-          >
-            <div
-              className={`rounded-xl px-4 py-2 ${
-                message.role === 'system'
-                  ? 'max-w-[90%] text-amber-200 border border-amber-700/50'
-                  : 'max-w-[80%]'
-              } ${
-                message.role === 'user'
-                  ? 'text-white'
-                  : 'text-zinc-100'
-              }`}
-              style={{
-                background: message.role === 'user'
-                  ? 'var(--accent-warm)'
-                  : message.role === 'system'
-                  ? 'rgba(120, 80, 20, 0.3)'
-                  : 'rgba(40, 35, 32, 0.8)'
-              }}
-            >
-              <pre className="whitespace-pre-wrap font-sans text-sm">
-                {message.content}
-              </pre>
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>Describe the video you want to create...</p>
             </div>
-          </div>
-        ))}
+          )}
 
-        {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
-          <div className="flex justify-start">
-            <div className="rounded-xl px-4 py-2" style={{ background: 'rgba(40, 35, 32, 0.8)', color: 'var(--text-secondary)' }}>
-              <div className="flex items-center gap-2">
-                <div className="animate-pulse">Thinking...</div>
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={cn(
+                'flex',
+                message.role === 'user'
+                  ? 'justify-end'
+                  : message.role === 'system'
+                  ? 'justify-center'
+                  : 'justify-start'
+              )}
+            >
+              <div
+                className={cn(
+                  'rounded-xl px-4 py-2 text-sm',
+                  message.role === 'user' && 'max-w-[80%] bg-primary text-primary-foreground',
+                  message.role === 'assistant' && 'max-w-[80%] bg-muted text-foreground',
+                  message.role === 'system' && 'max-w-[90%] bg-amber-50 text-amber-800 border border-amber-200'
+                )}
+              >
+                <pre className="whitespace-pre-wrap font-sans">
+                  {message.content}
+                </pre>
               </div>
             </div>
-          </div>
-        )}
+          ))}
 
-        <div ref={messagesEndRef} />
-      </div>
+          {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+            <div className="flex justify-start">
+              <div className="rounded-xl px-4 py-2 bg-muted text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Thinking...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t" style={{ borderColor: 'var(--glass-border)' }}>
+      <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
-          <input
-            type="text"
+          <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isLoading ? "Send another message (will be queued)..." : "Describe your video changes..."}
-            className="flex-1 text-white rounded-xl px-4 py-2 outline-none transition-all"
-            style={{
-              background: 'rgba(40, 35, 32, 0.8)',
-              border: '1px solid var(--glass-border)',
-            }}
+            className="flex-1"
           />
-          <button
+          <Button
             type="submit"
             disabled={!input.trim()}
-            className="disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-colors"
-            style={{
-              background: !input.trim() ? 'rgba(40, 35, 32, 0.8)' : 'var(--accent-warm)',
-            }}
+            size="icon"
           >
-            {isLoading ? 'Queue' : 'Send'}
-          </button>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       </form>
     </div>

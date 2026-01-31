@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listProjects, createProject, deleteProject } from '../api';
 import type { Project } from '../types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Plus, Video, Trash2, Loader2, AlertCircle } from 'lucide-react';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -39,7 +52,6 @@ export function Dashboard() {
       const project = await createProject({ name: newProjectName.trim() });
       setShowCreateModal(false);
       setNewProjectName('');
-      // Navigate to the new project
       navigate(`/projects/${project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -70,161 +82,139 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">StoryDream</h1>
-            <p className="text-zinc-400 mt-1">Your video projects</p>
+            <h1 className="text-3xl font-bold text-foreground">StoryDream</h1>
+            <p className="text-muted-foreground mt-1">Your video projects</p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4" />
             New Project
-          </button>
+          </Button>
         </div>
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Loading state */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : projects.length === 0 ? (
           /* Empty state */
           <div className="text-center py-20">
-            <div className="text-zinc-500 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1}
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
+            <div className="text-muted-foreground mb-4">
+              <Video className="w-16 h-16 mx-auto" strokeWidth={1} />
             </div>
-            <h3 className="text-xl text-zinc-300 mb-2">No projects yet</h3>
-            <p className="text-zinc-500 mb-6">Create your first video project to get started</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition-colors"
-            >
+            <h3 className="text-xl text-foreground mb-2">No projects yet</h3>
+            <p className="text-muted-foreground mb-6">Create your first video project to get started</p>
+            <Button onClick={() => setShowCreateModal(true)}>
               Create Your First Project
-            </button>
+            </Button>
           </div>
         ) : (
           /* Project grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
-              <div
+              <Card
                 key={project.id}
                 onClick={() => navigate(`/projects/${project.id}`)}
-                className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-6 cursor-pointer hover:bg-zinc-800 hover:border-zinc-600 transition-all group"
+                className="cursor-pointer hover:shadow-md hover:border-primary/20 transition-all group"
               >
-                {/* Thumbnail placeholder */}
-                <div className="aspect-video bg-zinc-900 rounded-lg mb-4 flex items-center justify-center">
-                  {project.thumbnailUrl ? (
-                    <img
-                      src={project.thumbnailUrl}
-                      alt={project.name}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <svg className="w-12 h-12 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1}
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                <CardContent className="p-6">
+                  {/* Thumbnail placeholder */}
+                  <div className="aspect-video bg-muted rounded-lg mb-4 flex items-center justify-center">
+                    {project.thumbnailUrl ? (
+                      <img
+                        src={project.thumbnailUrl}
+                        alt={project.name}
+                        className="w-full h-full object-cover rounded-lg"
                       />
-                    </svg>
-                  )}
-                </div>
-
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-white group-hover:text-blue-400 transition-colors">
-                      {project.name}
-                    </h3>
-                    <p className="text-sm text-zinc-500 mt-1">
-                      Last opened {formatDate(project.lastOpenedAt)}
-                    </p>
+                    ) : (
+                      <Video className="w-12 h-12 text-muted-foreground" strokeWidth={1} />
+                    )}
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteProject(project.id, e)}
-                    className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">
+                        {project.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Last opened {formatDate(project.lastOpenedAt)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDeleteProject(project.id, e)}
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
       </div>
 
       {/* Create Project Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-800 rounded-2xl p-6 w-full max-w-md border border-zinc-700">
-            <h2 className="text-xl font-semibold text-white mb-4">Create New Project</h2>
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+          </DialogHeader>
 
-            <input
-              type="text"
+          <div className="py-4">
+            <Label htmlFor="projectName">Project name</Label>
+            <Input
+              id="projectName"
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
-              placeholder="Project name"
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 mb-4"
+              placeholder="Enter project name"
+              className="mt-2"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
             />
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewProjectName('');
-                }}
-                className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateProject}
-                disabled={!newProjectName.trim() || isCreating}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {isCreating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Creating...
-                  </>
-                ) : (
-                  'Create'
-                )}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowCreateModal(false);
+                setNewProjectName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateProject}
+              disabled={!newProjectName.trim() || isCreating}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

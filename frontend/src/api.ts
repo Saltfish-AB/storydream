@@ -2,10 +2,8 @@
 
 import type { Project, ChatMessage, CreateProjectRequest, RenderJob, RenderJobRequest } from './types';
 
-// Use relative URL in production (nginx proxies /api to backend)
-// Use localhost for local development
-const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-const API_BASE = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:8081/api' : '/api');
+// Use relative URL - vite proxy handles /api in dev, nginx in production
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
