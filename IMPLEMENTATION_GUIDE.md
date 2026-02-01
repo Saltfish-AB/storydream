@@ -17,8 +17,36 @@
 
 ### Overview
 
-StoryDream currently runs on Docker Compose with three main components:
+> **Note (Feb 2026)**: The StoryDream frontend has been integrated into Avatar Studio (`/repos/avatar-studio`). The frontend is served at the `/video` route in Avatar Studio and proxies API/WebSocket requests to the StoryDream backend in Kubernetes.
 
+**Production Setup:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Avatar Studio (separate repo)                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  Frontend at /video route                                     │   │
+│  │  - Proxies /storydream/api → storydream.saltfish.ai/api      │   │
+│  │  - Proxies /storydream/ws  → storydream.saltfish.ai/ws       │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│               StoryDream Backend (Kubernetes - GKE)                  │
+│                     storydream.saltfish.ai                          │
+│  ┌──────────────┐    ┌───────────────────────────────────────────┐ │
+│  │   Backend    │    │  Session Pods (dynamic, per project)      │ │
+│  │   (Node.js)  │◄──►│  ┌─────────┐ ┌─────────┐ ┌─────────┐     │ │
+│  │              │    │  │session-1│ │session-2│ │session-n│     │ │
+│  └──────────────┘    │  │Remotion │ │Remotion │ │Remotion │     │ │
+│         │            │  │+Agent   │ │+Agent   │ │+Agent   │     │ │
+│         ▼            │  └─────────┘ └─────────┘ └─────────┘     │ │
+│   K8s API            └───────────────────────────────────────────┘ │
+│   (pod creation)                                                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Development Setup (Docker Compose):**
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Current Setup (Docker)                        │
@@ -39,8 +67,8 @@ StoryDream currently runs on Docker Compose with three main components:
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| **Frontend** | React + Vite + Tailwind | Chat UI, video preview iframe, WebSocket client |
-| **Backend** | Node.js + WebSocket + Dockerode | Session orchestration, message routing, container lifecycle |
+| **Frontend** | React + Vite + Tailwind + shadcn/ui | Chat UI, video preview iframe, WebSocket client. **Lives in Avatar Studio repo** at `/video` route. |
+| **Backend** | Node.js + WebSocket + K8s API | Session orchestration, message routing, pod lifecycle |
 | **Project Container** | Remotion + Claude Agent SDK | Sandboxed code execution, video preview, AI agent |
 
 ### Current Data Flow
@@ -121,15 +149,20 @@ StoryDream currently runs on Docker Compose with three main components:
 
 ### URL Structure
 
-Following patterns similar to Lovable:
+The frontend is served from Avatar Studio:
 
 ```
-https://storydream.io/                     → Landing page
-https://storydream.io/projects             → Project dashboard (list)
-https://storydream.io/projects/{projectId} → Project workspace (chat + preview)
+https://studio.saltfish.ai/video           → Project dashboard (list)
+https://studio.saltfish.ai/video/{projectId} → Project workspace (chat + preview)
 ```
 
-The frontend is a SPA with client-side routing. All paths serve the same React app, which handles routing internally.
+API and WebSocket endpoints are proxied:
+```
+/storydream/api/*  → https://storydream.saltfish.ai/api/*
+/storydream/ws     → wss://storydream.saltfish.ai/ws
+```
+
+The frontend is a SPA with client-side routing integrated into Avatar Studio.
 
 ---
 
@@ -459,13 +492,14 @@ project-container/
 └── agent/src/
     └── git-persist.ts     (new - auto-commit logic)
 
-frontend/src/
-├── App.tsx                (modify - add routing)
-├── pages/
-│   ├── Dashboard.tsx      (new)
-│   └── Project.tsx        (new)
+# Frontend changes are in avatar-studio repo:
+avatar-studio/app/src/features/storydream/
+├── api/storydreamApi.js   (existing - add project CRUD)
+├── components/
+│   ├── StorydreamDashboard.jsx  (existing)
+│   └── StorydreamWorkspace.jsx  (existing)
 └── hooks/
-    └── useProject.ts      (new)
+    └── useProject.js      (new - project state management)
 ```
 
 ### Phase 2: Kubernetes Migration

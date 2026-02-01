@@ -27,26 +27,35 @@ Creating programmatic videos with Remotion requires React/TypeScript knowledge. 
 
 ## Architecture
 
+> **Note (Feb 2026)**: The StoryDream frontend has been integrated into the Avatar Studio application (`/repos/avatar-studio`). The StoryDream repository now only contains the backend orchestrator and project-container code. The frontend is served from Avatar Studio at the `/video` route.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Frontend (Vite + React)                │
+│           Avatar Studio Frontend (Vite + React)             │
+│               /repos/avatar-studio/app/                     │
 │  ┌─────────────────────┐    ┌────────────────────────────┐  │
 │  │   Chat Panel        │    │   Video Preview (iframe)   │  │
 │  │   - Message history │    │   → points to container's  │  │
-│  │   - Input box       │    │     Vite dev server port   │  │
+│  │   - Input box       │    │     preview URL            │  │
 │  └─────────────────────┘    └────────────────────────────┘  │
+│                                                             │
+│  Routes:                                                    │
+│  - /video          → Project listing (StorydreamDashboard)  │
+│  - /video/:id      → Project workspace (StorydreamWorkspace)│
 └───────────────┬─────────────────────────────────────────────┘
-                │ WebSocket
+                │ WebSocket (/storydream/ws → proxied)
+                │ REST API (/storydream/api → proxied)
 ┌───────────────▼─────────────────────────────────────────────┐
-│                 Backend (Orchestrator)                      │
+│            StoryDream Backend (Kubernetes)                  │
+│                storydream.saltfish.ai                       │
 │  - Manages WebSocket connections from frontend              │
-│  - Orchestrates container lifecycle (create/destroy)        │
-│  - Routes messages between frontend and containers          │
+│  - Orchestrates pod lifecycle (create/destroy)              │
+│  - Routes messages between frontend and session pods        │
 │  - Tracks active sessions                                   │
 └───────────────┬─────────────────────────────────────────────┘
-                │ Docker API + WebSocket to container
+                │ K8s API + WebSocket to pod
 ┌───────────────▼─────────────────────────────────────────────┐
-│              Project Container (per session)                │
+│              Project Container (per session pod)            │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │  Claude Agent (Agent SDK + claude_code preset)         │ │
 │  │  - Receives prompts via WebSocket                      │ │
@@ -64,11 +73,13 @@ Creating programmatic videos with Remotion requires React/TypeScript knowledge. 
 
 ## Technical Stack
 
-### Frontend
-- **Framework**: Vite + React
-- **Styling**: TBD (Tailwind?)
-- **WebSocket**: Native WebSocket or socket.io-client
-- **State**: React state or Zustand
+### Frontend (in Avatar Studio)
+- **Location**: `/repos/avatar-studio/app/src/features/storydream/`
+- **Framework**: Vite + React (JavaScript)
+- **Styling**: Tailwind + shadcn/ui
+- **WebSocket**: Custom hook (`useStorydreamWebSocket.js`)
+- **API**: REST client (`storydreamApi.js`)
+- **Proxy**: Vite dev proxy + nginx production proxy to `storydream.saltfish.ai`
 
 ### Backend (Orchestrator)
 - **Runtime**: Node.js + TypeScript
@@ -204,10 +215,14 @@ The preview updates automatically via Vite HMR when you edit files.
 
 ## Deployment
 
-### Development (Docker)
+### Development
 ```
-docker-compose.yml
-├── frontend (Vite dev server)
+Avatar Studio (docker-compose):
+├── avatar-studio frontend (Vite dev server)
+│   └── Proxies /storydream/* to storydream.saltfish.ai
+└── avatar-studio backend
+
+StoryDream (docker-compose.yml):
 ├── backend (Node.js orchestrator)
 └── [dynamic project containers via Docker API]
 ```
@@ -215,19 +230,24 @@ docker-compose.yml
 ### Production (Kubernetes/GKE)
 ```
 GKE Cluster (storydream namespace)
-├── frontend (Deployment + Service)
 ├── backend (Deployment + Service)
 │   └── Creates session pods dynamically via K8s API
 ├── session-{shortId} pods (created per user session)
 │   ├── init-container: downloads project from GCS
 │   └── project-container: agent + Remotion dev server
-├── ingress-nginx (routes *.saltfish.ai)
+├── ingress-nginx (routes storydream.saltfish.ai)
 └── Cloudflare (TLS termination, DNS)
+
+Avatar Studio (separate deployment):
+├── Frontend serves StoryDream UI at /video route
+└── Proxies API/WebSocket to storydream.saltfish.ai
 
 Storage:
 ├── Firestore: project metadata, chat history
 └── GCS (storydream-data bucket): project source code, session data
 ```
+
+> **Note**: The StoryDream frontend deployment was removed from Kubernetes. The frontend is now served by Avatar Studio, which proxies API and WebSocket requests to the StoryDream backend.
 
 See `docs/PROJECT_PERSISTENCE.md` for details on the sync architecture.
 
@@ -260,27 +280,18 @@ Container → Backend:
 
 ```
 storydream/
-├── frontend/
+├── frontend/                    # DEPRECATED - now in avatar-studio
+│   └── (legacy code, not deployed)
+│
+├── backend/                     # Orchestrator (deployed to K8s)
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── Chat.tsx
-│   │   │   ├── VideoPreview.tsx
-│   │   │   └── Landing.tsx
-│   │   ├── hooks/
-│   │   │   └── useWebSocket.ts
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── Dockerfile
-├── backend/                     # Orchestrator only
-│   ├── src/
-│   │   ├── container.ts         # Docker container management
+│   │   ├── kubernetes.ts        # K8s pod management
 │   │   ├── websocket.ts         # WebSocket routing
 │   │   └── index.ts
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── Dockerfile
+│
 ├── project-container/           # Self-contained agent + Remotion app
 │   ├── agent/
 │   │   ├── server.ts            # WebSocket server for agent
@@ -288,7 +299,7 @@ storydream/
 │   ├── remotion-app/
 │   │   ├── .claude/
 │   │   │   └── skills/
-│   │   │       └── remotion-best-practices/  # Official Remotion skill
+│   │   │       └── remotion-best-practices/
 │   │   │           ├── SKILL.md
 │   │   │           └── rules/*.md
 │   │   ├── src/
@@ -298,11 +309,27 @@ storydream/
 │   │   │   └── main.tsx
 │   │   ├── package.json
 │   │   └── vite.config.ts
-│   ├── package.json             # Has @anthropic-ai/claude-agent-sdk
-│   ├── start.sh                 # Starts both agent server + Vite
+│   ├── package.json
+│   ├── start.sh
 │   └── Dockerfile
+│
+├── k8s/                         # Kubernetes manifests
 ├── docker-compose.yml
 └── spec.md
+
+# Frontend location (in avatar-studio repo):
+avatar-studio/app/src/features/storydream/
+├── api/
+│   └── storydreamApi.js         # REST API client
+├── hooks/
+│   └── useStorydreamWebSocket.js # WebSocket hook
+├── components/
+│   ├── Chat.jsx
+│   ├── VideoPreview.jsx
+│   ├── RenderButton.jsx
+│   ├── StorydreamDashboard.jsx  # Project listing
+│   └── StorydreamWorkspace.jsx  # Chat + preview workspace
+└── index.js                     # Barrel export
 ```
 
 ## Success Criteria (MVP)
